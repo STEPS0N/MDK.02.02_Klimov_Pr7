@@ -1,6 +1,9 @@
-﻿using System.Diagnostics;
+﻿using HtmlAgilityPack;
+using System.Collections;
+using System.Diagnostics;
 using System.Net;
 using System.Text;
+using System.IO;
 
 namespace HttpYandexMarket
 {
@@ -8,8 +11,13 @@ namespace HttpYandexMarket
     {
         static void Main(string[] args)
         {
+            TextWriterTraceListener fileListener = new TextWriterTraceListener("debug_trace.log");
+            Trace.Listeners.Add(fileListener);
+            Trace.AutoFlush = true;
+
             Cookie token = SingIn("user", "user");
             string html = GetContent(token);
+            ParsingHtml(html);
             Console.WriteLine(html);
             Console.WriteLine(token.Value);
             Console.Read();
@@ -55,6 +63,25 @@ namespace HttpYandexMarket
             string responseFromServer = new StreamReader(response.GetResponseStream()).ReadToEnd();
             
             return responseFromServer;
+        }
+
+        public static void ParsingHtml(string htmlCode)
+        {
+            var html = new HtmlDocument();
+            html.LoadHtml(htmlCode);
+            var Document = html.DocumentNode;
+            IEnumerable DivsNews = Document.Descendants(0).Where(n => n.HasClass("news"));
+
+            foreach (HtmlNode DivNews in DivsNews)
+            {
+                var src = DivNews.ChildNodes[1].GetAttributeValue("src", "none");
+                var name = DivNews.ChildNodes[3].InnerText;
+                var description = DivNews.ChildNodes[5].InnerText;
+
+                Console.WriteLine(name + "\n" + "Изображение: " + src + "\n" + "Описание: " + description + "\n");
+
+                Debug.WriteLine($"[{DateTime.Now}] Новость: {name} | Картинка: {src}");
+            }
         }
     }
 }
