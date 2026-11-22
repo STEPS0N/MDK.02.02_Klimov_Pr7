@@ -15,11 +15,14 @@ namespace HttpYandexMarket
             Trace.Listeners.Add(fileListener);
             Trace.AutoFlush = true;
 
-            Cookie token = SingIn("user", "user");
-            string html = GetContent(token);
-            ParsingHtml(html);
-            Console.WriteLine(html);
-            Console.WriteLine(token.Value);
+            string html = GetContentNews();
+            ParsingHtmlNews(html);
+
+            //Cookie token = SingIn("user", "user");
+            //string html = GetContent(token);
+            //ParsingHtml(html);
+            //Console.WriteLine(html);
+            //Console.WriteLine(token.Value);
             Console.Read();
         }
 
@@ -51,36 +54,93 @@ namespace HttpYandexMarket
             return token;
         }
 
-        public static string GetContent(Cookie Token)
+        //public static string GetContentAviat(Cookie Token)
+        //{
+        //    string url = "http://localhost/main.php";
+        //    Debug.WriteLine($"Выполняем запрос: {url}");
+        //    HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+        //    request.CookieContainer = new CookieContainer();
+        //    request.CookieContainer.Add(Token);
+        //    HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+        //    Debug.WriteLine($"Статус выполнения: {response.StatusCode}");
+        //    string responseFromServer = new StreamReader(response.GetResponseStream()).ReadToEnd();
+            
+        //    return responseFromServer;
+        //}
+
+        //public static void ParsingHtmlAviat(string htmlCode)
+        //{
+        //    var html = new HtmlDocument();
+        //    html.LoadHtml(htmlCode);
+        //    var Document = html.DocumentNode;
+        //    IEnumerable DivsNews = Document.Descendants(0).Where(n => n.HasClass("news"));
+
+        //    foreach (HtmlNode DivNews in DivsNews)
+        //    {
+        //        var src = DivNews.ChildNodes[1].GetAttributeValue("src", "none");
+        //        var name = DivNews.ChildNodes[3].InnerText;
+        //        var description = DivNews.ChildNodes[5].InnerText;
+
+        //        Console.WriteLine(name + "\n" + "Изображение: " + src + "\n" + "Описание: " + description + "\n");
+
+        //        Debug.WriteLine($"[{DateTime.Now}] Новость: {name} | Картинка: {src}");
+        //    }
+        //}
+
+        public static string GetContentNews()
         {
-            string url = "http://localhost/main.php";
+            string url = "https://lenta.ru/";
             Debug.WriteLine($"Выполняем запрос: {url}");
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
-            request.CookieContainer = new CookieContainer();
-            request.CookieContainer.Add(Token);
+            request.Method = "GET";
             HttpWebResponse response = (HttpWebResponse)request.GetResponse();
             Debug.WriteLine($"Статус выполнения: {response.StatusCode}");
             string responseFromServer = new StreamReader(response.GetResponseStream()).ReadToEnd();
-            
+
             return responseFromServer;
         }
 
-        public static void ParsingHtml(string htmlCode)
+        public static void ParsingHtmlNews(string htmlCode)
         {
             var html = new HtmlDocument();
             html.LoadHtml(htmlCode);
             var Document = html.DocumentNode;
-            IEnumerable DivsNews = Document.Descendants(0).Where(n => n.HasClass("news"));
 
-            foreach (HtmlNode DivNews in DivsNews)
+            var mainContent = Document.SelectSingleNode("//main[contains(@class,'layout__content')]");
+
+            var links = mainContent.Descendants("a");
+
+            int count = 0;
+            var seen = new HashSet<string>();
+
+            foreach (var link in links)
             {
-                var src = DivNews.ChildNodes[1].GetAttributeValue("src", "none");
-                var name = DivNews.ChildNodes[3].InnerText;
-                var description = DivNews.ChildNodes[5].InnerText;
+                var href = link.GetAttributeValue("href", "");
+                if (!href.Contains("/news/") && !href.Contains("/articles/"))
+                    continue;
 
-                Console.WriteLine(name + "\n" + "Изображение: " + src + "\n" + "Описание: " + description + "\n");
+                var title = link.InnerText.Trim();
+                if (string.IsNullOrEmpty(title) || title.Length < 15)
+                    continue;
 
-                Debug.WriteLine($"[{DateTime.Now}] Новость: {name} | Картинка: {src}");
+                if (!seen.Add(href))
+                    continue;
+
+                if (href.StartsWith("/"))
+                {
+                    href = "https://lenta.ru" + href;
+                }
+
+                var timeNode = link.SelectSingleNode(".//time");
+                var timeText = timeNode.InnerText.Trim();
+
+                Console.WriteLine(title);
+                Console.WriteLine("Время: " + timeText);
+                Console.WriteLine("Ссылка: " + href);
+                Console.WriteLine();
+
+                Debug.WriteLine($"[{DateTime.Now}] Новость: {title} | Время: {timeText} | {href}");
+                count++;
             }
         }
     }
