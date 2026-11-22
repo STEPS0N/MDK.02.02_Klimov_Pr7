@@ -1,9 +1,10 @@
 ﻿using HtmlAgilityPack;
 using System.Collections;
 using System.Diagnostics;
+using System.IO;
 using System.Net;
 using System.Text;
-using System.IO;
+using System.Xml.Linq;
 
 namespace HttpYandexMarket
 {
@@ -15,10 +16,12 @@ namespace HttpYandexMarket
             Trace.Listeners.Add(fileListener);
             Trace.AutoFlush = true;
 
-            string html = GetContentNews();
-            ParsingHtmlNews(html);
+            //string html = GetContentNews();
+            //ParsingHtmlNews(html);
 
-            //Cookie token = SingIn("user", "user");
+            Cookie token = SingIn("admin", "admin");
+            AddNews(token);
+
             //string html = GetContent(token);
             //ParsingHtml(html);
             //Console.WriteLine(html);
@@ -54,6 +57,45 @@ namespace HttpYandexMarket
             return token;
         }
 
+        public static void AddNews(Cookie Token)
+        {
+            Console.WriteLine("Ссылка на картинку:");
+            string src = Console.ReadLine();
+
+            Console.WriteLine("Название:");
+            string title = Console.ReadLine();
+
+            Console.WriteLine("Описание:");
+            string description = Console.ReadLine();
+
+            string url = "http://localhost/ajax/add.php";
+            Debug.WriteLine($"Выполняем запрос: {url}");
+
+            string postData = "src=" + src + "&" +
+                "name=" + title + "&" +
+                "description=" + description;
+
+            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+            request.Method = "POST";
+            request.ContentType = "application/x-www-form-urlencoded";
+
+            CookieContainer cookies = new CookieContainer();
+            cookies.Add(Token);
+            request.CookieContainer = cookies;
+
+            byte[] Data = Encoding.UTF8.GetBytes(postData);
+            request.ContentLength = Data.Length;
+
+            using (var stream = request.GetRequestStream())
+            {
+                stream.Write(Data, 0, Data.Length);
+            }
+
+            HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+            Debug.WriteLine($"[{DateTime.Now}] Статус добавления: {response.StatusCode}");
+            Console.WriteLine($"Статус: {response.StatusCode}");
+        }
+
         //public static string GetContentAviat(Cookie Token)
         //{
         //    string url = "http://localhost/main.php";
@@ -64,7 +106,7 @@ namespace HttpYandexMarket
         //    HttpWebResponse response = (HttpWebResponse)request.GetResponse();
         //    Debug.WriteLine($"Статус выполнения: {response.StatusCode}");
         //    string responseFromServer = new StreamReader(response.GetResponseStream()).ReadToEnd();
-            
+
         //    return responseFromServer;
         //}
 
@@ -87,61 +129,61 @@ namespace HttpYandexMarket
         //    }
         //}
 
-        public static string GetContentNews()
-        {
-            string url = "https://lenta.ru/";
-            Debug.WriteLine($"Выполняем запрос: {url}");
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
-            request.Method = "GET";
-            HttpWebResponse response = (HttpWebResponse)request.GetResponse();
-            Debug.WriteLine($"Статус выполнения: {response.StatusCode}");
-            string responseFromServer = new StreamReader(response.GetResponseStream()).ReadToEnd();
+        //public static string GetContentNews()
+        //{
+        //    string url = "https://lenta.ru/";
+        //    Debug.WriteLine($"Выполняем запрос: {url}");
+        //    HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+        //    request.Method = "GET";
+        //    HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+        //    Debug.WriteLine($"Статус выполнения: {response.StatusCode}");
+        //    string responseFromServer = new StreamReader(response.GetResponseStream()).ReadToEnd();
 
-            return responseFromServer;
-        }
+        //    return responseFromServer;
+        //}
 
-        public static void ParsingHtmlNews(string htmlCode)
-        {
-            var html = new HtmlDocument();
-            html.LoadHtml(htmlCode);
-            var Document = html.DocumentNode;
+        //public static void ParsingHtmlNews(string htmlCode)
+        //{
+        //    var html = new HtmlDocument();
+        //    html.LoadHtml(htmlCode);
+        //    var Document = html.DocumentNode;
 
-            var mainContent = Document.SelectSingleNode("//main[contains(@class,'layout__content')]");
+        //    var mainContent = Document.SelectSingleNode("//main[contains(@class,'layout__content')]");
 
-            var links = mainContent.Descendants("a");
+        //    var links = mainContent.Descendants("a");
 
-            int count = 0;
-            var seen = new HashSet<string>();
+        //    int count = 0;
+        //    var seen = new HashSet<string>();
 
-            foreach (var link in links)
-            {
-                var href = link.GetAttributeValue("href", "");
-                if (!href.Contains("/news/") && !href.Contains("/articles/"))
-                    continue;
+        //    foreach (var link in links)
+        //    {
+        //        var href = link.GetAttributeValue("href", "");
+        //        if (!href.Contains("/news/") && !href.Contains("/articles/"))
+        //            continue;
 
-                var title = link.InnerText.Trim();
-                if (string.IsNullOrEmpty(title) || title.Length < 15)
-                    continue;
+        //        var title = link.InnerText.Trim();
+        //        if (string.IsNullOrEmpty(title) || title.Length < 15)
+        //            continue;
 
-                if (!seen.Add(href))
-                    continue;
+        //        if (!seen.Add(href))
+        //            continue;
 
-                if (href.StartsWith("/"))
-                {
-                    href = "https://lenta.ru" + href;
-                }
+        //        if (href.StartsWith("/"))
+        //        {
+        //            href = "https://lenta.ru" + href;
+        //        }
 
-                var timeNode = link.SelectSingleNode(".//time");
-                var timeText = timeNode.InnerText.Trim();
+        //        var timeNode = link.SelectSingleNode(".//time");
+        //        var timeText = timeNode.InnerText.Trim();
 
-                Console.WriteLine(title);
-                Console.WriteLine("Время: " + timeText);
-                Console.WriteLine("Ссылка: " + href);
-                Console.WriteLine();
+        //        Console.WriteLine(title);
+        //        Console.WriteLine("Время: " + timeText);
+        //        Console.WriteLine("Ссылка: " + href);
+        //        Console.WriteLine();
 
-                Debug.WriteLine($"[{DateTime.Now}] Новость: {title} | Время: {timeText} | {href}");
-                count++;
-            }
-        }
+        //        Debug.WriteLine($"[{DateTime.Now}] Новость: {title} | Время: {timeText} | {href}");
+        //        count++;
+        //    }
+        //}
     }
 }
